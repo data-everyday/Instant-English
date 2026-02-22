@@ -1,5 +1,9 @@
+import { questionsByMode } from './data.js';
+
 class App {
     constructor() {
+        this.currentMode = 'easy'; // Default mode
+        this.baseQuestions = { ...questionsByMode };
         this.currentIndex = 0;
         this.isPlaying = false;
         this.timer = null;
@@ -16,6 +20,7 @@ class App {
         this.timerContainer = document.getElementById('timer-container');
         this.timerBar = document.getElementById('timer-bar');
         this.startBtn = document.getElementById('start-btn');
+        this.answerBtn = document.getElementById('answer-btn'); // New Answer Button
         this.nextBtn = document.getElementById('next-btn');
         this.progressEl = document.getElementById('progress-text');
 
@@ -31,6 +36,7 @@ class App {
         this.delayInput = document.getElementById('delay-input');
         this.questionList = document.getElementById('question-list');
         this.listCount = document.getElementById('list-count');
+        this.modeButtons = document.querySelectorAll('.mode-btn'); // Mode Buttons
 
         // Speech Recognition Setup
         this.recognition = null;
@@ -79,20 +85,27 @@ class App {
     }
 
     loadQuestions() {
-        const saved = localStorage.getItem('flashQuestions');
+        const saved = localStorage.getItem(`flashQuestions_${this.currentMode}`);
         if (saved) {
             try {
                 this.questions = JSON.parse(saved);
             } catch (e) {
-                this.questions = [...defaultQuestions];
+                this.questions = [...this.baseQuestions[this.currentMode]];
             }
         } else {
-            this.questions = [...defaultQuestions];
+            this.questions = [...this.baseQuestions[this.currentMode]];
         }
+
+        // Ensure at least one question exists
+        if (this.questions.length === 0) {
+            this.questions = [{ jp: "データがありません", en: "No data." }];
+        }
+
+        this.currentIndex = 0;
     }
 
     saveQuestions() {
-        localStorage.setItem('flashQuestions', JSON.stringify(this.questions));
+        localStorage.setItem(`flashQuestions_${this.currentMode}`, JSON.stringify(this.questions));
         this.renderList();
     }
 
@@ -103,11 +116,36 @@ class App {
 
         // Event Listeners
         this.startBtn.addEventListener('click', () => this.togglePlay());
+
         this.nextBtn.addEventListener('click', () => {
-            // Always allow next
-            this.nextQuestion();
+            if (this.questions.length > 0) this.nextQuestion();
         });
+
+        this.answerBtn.addEventListener('click', () => {
+            if (this.isPlaying && this.timerContainer.classList.contains('active')) {
+                clearTimeout(this.timer);
+                if (this.recognition) this.recognition.stop();
+                this.showAnswerAndSpeak(true); // force ignore generic cheer
+            }
+        });
+
         this.addForm.addEventListener('submit', (e) => this.handleAddQuestion(e));
+
+        // Mode Toggles Setup
+        this.modeButtons.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (this.isPlaying) this.togglePlay(); // Pause and reset state if playing
+
+                this.modeButtons.forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+
+                this.currentMode = e.target.dataset.mode;
+                this.loadQuestions();
+                this.updateProgress();
+                this.renderQuestion(false);
+                this.renderList();
+            });
+        });
 
         // Initial render list
         this.renderList();
@@ -195,6 +233,10 @@ class App {
         this.timerBar.style.animationDuration = `${waitTime}s`;
         this.timerBar.classList.add('animating');
 
+        // Show Answer Button
+        this.answerBtn.style.display = 'flex';
+        this.nextBtn.style.display = 'none';
+
         // Start listening
         if (this.recognition) {
             try {
@@ -215,6 +257,10 @@ class App {
         this.enEl.classList.add('visible');
         this.timerContainer.classList.remove('active');
         this.timerBar.classList.remove('animating');
+
+        // Hide Answer Button
+        this.answerBtn.style.display = 'none';
+        this.nextBtn.style.display = 'flex';
 
         const currentQ = this.questions[this.currentIndex];
         this.speak(currentQ.en);
@@ -280,6 +326,10 @@ class App {
             if (this.recognition) this.recognition.stop();
             this.timerContainer.classList.remove('active');
             this.timerBar.classList.remove('animating');
+
+            // Hide Answer Button on Pause
+            this.answerBtn.style.display = 'none';
+            this.nextBtn.style.display = 'flex';
         }
     }
 

@@ -19,6 +19,13 @@
         </header>
 
         <main>
+            <!-- Mode Selection -->
+            <div class="mode-selector">
+                <button class="mode-btn active" data-mode="easy">Easy</button>
+                <button class="mode-btn" data-mode="normal">Normal</button>
+                <button class="mode-btn" data-mode="hard">Hard</button>
+            </div>
+
             <div class="flashcard-container">
                 <div class="flashcard">
                     <div class="question-jp" id="question-jp">
@@ -46,6 +53,13 @@
                         clip-rule="evenodd"></path>
                 </svg>
                 Start Training
+            </button>
+            <button id="answer-btn" class="btn btn-answer" style="display: none;">
+                Answer
+                <svg width="20" height="20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                    <path
+                        d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+                </svg>
             </button>
             <button id="next-btn" class="btn">
                 Next
