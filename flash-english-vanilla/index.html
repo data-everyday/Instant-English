@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flash English Translation</title>
+    <!-- Use Inter font for a modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Flash English</h1>
+            <p class="subtitle">Quick translation training / 瞬間英作文トレーニング</p>
+        </header>
+
+        <main>
+            <div class="flashcard-container">
+                <div class="flashcard">
+                    <div class="question-jp" id="question-jp">
+                        ここに日本語が表示されます
+                    </div>
+
+                    <div class="answer-en-wrapper">
+                        <div class="answer-en" id="answer-en">
+                            English text will appear here
+                        </div>
+                    </div>
+
+                    <div class="timer-container" id="timer-container">
+                        <div class="timer-bar" id="timer-bar"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div class="controls">
+            <button id="start-btn" class="btn btn-primary">
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                        clip-rule="evenodd"></path>
+                </svg>
+                Start Training
+            </button>
+            <button id="next-btn" class="btn">
+                Next
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd"
+                        d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z"
+                        clip-rule="evenodd"></path>
+                </svg>
+            </button>
+        </div>
+
+        <div class="progress-text" id="progress-text">
+            1 / 10
+        </div>
+
+        <!-- Add Question Form -->
+        <div class="add-form-container">
+            <h3>オリジナル問題を追加</h3>
+            <form id="add-form" class="add-form">
+                <input type="text" id="input-jp" placeholder="日本語を入力" required>
+                <input type="text" id="input-en" placeholder="英語の解答を入力" required>
+                <button type="submit" class="btn btn-add">追加</button>
+            </form>
+        </div>
+
+        <!-- Configuration -->
+        <div class="config-container">
+            <label for="delay-input">次の問題までの待機時間 (秒):</label>
+            <input type="number" id="delay-input" value="4" min="1" max="10">
+        </div>
+
+        <!-- Question List -->
+        <div class="list-container">
+            <h3>問題リスト <span id="list-count">(0)</span></h3>
+            <ul id="question-list" class="question-list">
+                <!-- List items rendered via JS -->
+            </ul>
+        </div>
+    </div>
+
+    <!-- Mascot Widget -->
+    <div class="mascot-wrapper">
+        <div class="speech-bubble" id="mascot-speech">一緒にがんばろう！</div>
+        <img src="hangyodon.png" alt="Mascot" class="mascot-img" id="mascot-img">
+    </div>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
