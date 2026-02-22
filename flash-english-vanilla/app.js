@@ -36,74 +36,36 @@ class App {
         this.questionList = document.getElementById('question-list');
         this.listCount = document.getElementById('list-count');
 
-        // Speech Recognition Setup
-        this.recognition = null;
-        this.setupRecognition();
+        // Speech Recognition Setup removed
 
         this.init();
     }
 
-    setupRecognition() {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (SpeechRecognition) {
-            this.recognition = new SpeechRecognition();
-            this.recognition.lang = 'en-US';
-            this.recognition.interimResults = false;
-            this.recognition.maxAlternatives = 1;
-
-            // Note: running locally via file:// often forces explicit permission per .start().
-            // continuous = true can reduce prompts in some setups.
-            this.recognition.continuous = false;
-
-            this.recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript.toLowerCase().trim();
-                this.checkAnswer(transcript);
-            };
-
-            this.recognition.onerror = (event) => {
-                console.warn('Speech recognition error', event.error);
-            };
-        } else {
-            console.warn("Speech Recognition API not supported in this browser.");
+    // Fisher-Yates shuffle algorithm to randomize question order
+    shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [array[i], array[j]] = [array[j], array[i]];
         }
-    }
-
-    checkAnswer(spokenText) {
-        if (!this.isPlaying) return;
-
-        const currentQ = this.questions[this.currentIndex];
-
-        // Advanced normalization: Lowercase, remove all punctuation, trim whitespace, and replace multiple spaces with single space.
-        const normalize = (str) => {
-            return str.toLowerCase()
-                .replace(/[.,?!'"\-]/g, '') // remove common punctuation
-                .replace(/\s+/g, ' ')       // collapse multiple spaces
-                .trim();
-        };
-
-        const spoken = normalize(spokenText);
-        const target = normalize(currentQ.en);
-
-        // Check if spoken text closely matches the target
-        if (spoken === target || spoken.includes(target) || target.includes(spoken) && spoken.length > target.length * 0.7) {
-            // Auto advance immediately
-            clearTimeout(this.timer);
-            if (this.recognition) this.recognition.stop();
-            this.showAnswerAndSpeak(true); // force skip delay
-        }
+        return array;
     }
 
     loadQuestions() {
         const saved = localStorage.getItem(`flashQuestions_${this.currentMode}`);
+        let loadedQuestions = [];
+
         if (saved) {
             try {
-                this.questions = JSON.parse(saved);
+                loadedQuestions = JSON.parse(saved);
             } catch (e) {
-                this.questions = [...this.baseQuestions[this.currentMode]];
+                loadedQuestions = [...this.baseQuestions[this.currentMode]];
             }
         } else {
-            this.questions = [...this.baseQuestions[this.currentMode]];
+            loadedQuestions = [...this.baseQuestions[this.currentMode]];
         }
+
+        // Shuffle the questions so the order is random every time they are loaded
+        this.questions = this.shuffleArray([...loadedQuestions]);
 
         // Ensure at least one question exists
         if (this.questions.length === 0) {
@@ -133,12 +95,9 @@ class App {
         this.answerBtn.addEventListener('click', () => {
             if (this.isPlaying && this.timerContainer.classList.contains('active')) {
                 clearTimeout(this.timer);
-                if (this.recognition) this.recognition.stop();
                 this.showAnswerAndSpeak(true); // force ignore generic cheer
             }
         });
-
-        this.addForm.addEventListener('submit', (e) => this.handleAddQuestion(e));
 
         this.addForm.addEventListener('submit', (e) => this.handleAddQuestion(e));
 
@@ -220,18 +179,10 @@ class App {
         this.answerBtn.style.display = 'flex';
         this.nextBtn.style.display = 'none';
 
-        // Start listening
-        if (this.recognition) {
-            try {
-                this.recognition.start();
-            } catch (e) {
-                // already started
-            }
-        }
+        // Start listening (Removed in Iteration 5)
 
         clearTimeout(this.timer);
         this.timer = setTimeout(() => {
-            if (this.recognition) this.recognition.stop();
             this.showAnswerAndSpeak();
         }, waitTime * 1000); // Dynamic delay before showing answer
     }
@@ -263,9 +214,6 @@ class App {
         // Stop speech if speaking
         window.speechSynthesis.cancel();
         clearTimeout(this.timer);
-        if (this.recognition) {
-            this.recognition.stop();
-        }
 
         this.currentIndex = (this.currentIndex + 1) % this.questions.length;
         this.renderQuestion(this.isPlaying);
@@ -298,7 +246,6 @@ class App {
             // Pause current execution
             clearTimeout(this.timer);
             window.speechSynthesis.cancel();
-            if (this.recognition) this.recognition.stop();
             this.timerContainer.classList.remove('active');
             this.timerBar.classList.remove('animating');
 
