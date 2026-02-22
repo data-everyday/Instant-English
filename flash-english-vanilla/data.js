@@ -1,4 +1,4 @@
-export const questionsByMode = {
+const questionsByMode = {
     easy: [
         { jp: "私はコーヒーが好きです。", en: "I like coffee." },
         { jp: "彼は毎日そこへ行きます。", en: "He goes there every day." },

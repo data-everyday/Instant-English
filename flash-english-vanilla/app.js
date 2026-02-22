@@ -1,5 +1,3 @@
-import { questionsByMode } from './data.js';
-
 class App {
     constructor() {
         this.currentMode = 'easy'; // Default mode
@@ -7,7 +5,6 @@ class App {
         this.currentIndex = 0;
         this.isPlaying = false;
         this.timer = null;
-        this.mascotTimer = null;
         this.voices = [];
         this.selectedVoice = null;
         this.isSpeechReady = false;
@@ -29,14 +26,15 @@ class App {
         this.inputJp = document.getElementById('input-jp');
         this.inputEn = document.getElementById('input-en');
 
-        // Mascot Elements
-        this.mascotSpeech = document.getElementById('mascot-speech');
+        // Mode Setup
+        this.baseModes = ['easy', 'normal', 'hard'];
+        this.customModes = JSON.parse(localStorage.getItem('flash_custom_modes')) || [];
+        this.modeSelector = document.getElementById('mode-selector');
 
         // Config & List Elements
         this.delayInput = document.getElementById('delay-input');
         this.questionList = document.getElementById('question-list');
         this.listCount = document.getElementById('list-count');
-        this.modeButtons = document.querySelectorAll('.mode-btn'); // Mode Buttons
 
         // Speech Recognition Setup
         this.recognition = null;
@@ -52,6 +50,10 @@ class App {
             this.recognition.lang = 'en-US';
             this.recognition.interimResults = false;
             this.recognition.maxAlternatives = 1;
+
+            // Note: running locally via file:// often forces explicit permission per .start().
+            // continuous = true can reduce prompts in some setups.
+            this.recognition.continuous = false;
 
             this.recognition.onresult = (event) => {
                 const transcript = event.results[0][0].transcript.toLowerCase().trim();
@@ -70,13 +72,20 @@ class App {
         if (!this.isPlaying) return;
 
         const currentQ = this.questions[this.currentIndex];
-        // simple normalization: remove punctuation and lower case
-        const normalize = (str) => str.toLowerCase().replace(/[.,?!]/g, '').trim();
 
-        if (normalize(spokenText) === normalize(currentQ.en)) {
-            // Correct answer
-            this.showMascotMessage("大正解！すごい！", 3000);
+        // Advanced normalization: Lowercase, remove all punctuation, trim whitespace, and replace multiple spaces with single space.
+        const normalize = (str) => {
+            return str.toLowerCase()
+                .replace(/[.,?!'"\-]/g, '') // remove common punctuation
+                .replace(/\s+/g, ' ')       // collapse multiple spaces
+                .trim();
+        };
 
+        const spoken = normalize(spokenText);
+        const target = normalize(currentQ.en);
+
+        // Check if spoken text closely matches the target
+        if (spoken === target || spoken.includes(target) || target.includes(spoken) && spoken.length > target.length * 0.7) {
             // Auto advance immediately
             clearTimeout(this.timer);
             if (this.recognition) this.recognition.stop();
@@ -131,27 +140,11 @@ class App {
 
         this.addForm.addEventListener('submit', (e) => this.handleAddQuestion(e));
 
-        // Mode Toggles Setup
-        this.modeButtons.forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                if (this.isPlaying) this.togglePlay(); // Pause and reset state if playing
+        this.addForm.addEventListener('submit', (e) => this.handleAddQuestion(e));
 
-                this.modeButtons.forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-
-                this.currentMode = e.target.dataset.mode;
-                this.loadQuestions();
-                this.updateProgress();
-                this.renderQuestion(false);
-                this.renderList();
-            });
-        });
-
-        // Initial render list
+        // Initial render modes & list
+        this.renderModes();
         this.renderList();
-
-        // Initial mascot greeting
-        setTimeout(() => this.showMascotMessage("準備はいい？<br>がんばろう！", 3000), 500);
     }
 
     setupSpeechSynthesis() {
@@ -189,16 +182,6 @@ class App {
         utterance.rate = 0.9; // Slightly slower for clarity
 
         window.speechSynthesis.speak(utterance);
-    }
-
-    showMascotMessage(text, duration = 2000) {
-        this.mascotSpeech.innerHTML = text;
-        this.mascotSpeech.classList.add('show');
-
-        clearTimeout(this.mascotTimer);
-        this.mascotTimer = setTimeout(() => {
-            this.mascotSpeech.classList.remove('show');
-        }, duration);
     }
 
     renderQuestion(autoStart = true) {
@@ -265,12 +248,6 @@ class App {
         const currentQ = this.questions[this.currentIndex];
         this.speak(currentQ.en);
 
-        // Mascot cheer (only if not already cheered by correct answer)
-        if (!isEarly) {
-            const cheers = ["Nice!", "Great job!", "その調子！", "Good!"];
-            this.showMascotMessage(cheers[Math.floor(Math.random() * cheers.length)], 2000);
-        }
-
         if (this.isPlaying) {
             // Get user configured delay, default to 4 sec if invalid
             let waitTime = parseInt(this.delayInput.value, 10) * 1000;
@@ -309,11 +286,9 @@ class App {
                 <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>
                 Pause Session
             `;
-            this.showMascotMessage("スタート！<br>集中しよう！", 2000);
             this.startBtn.classList.remove('btn-primary');
             this.renderQuestion(true);
         } else {
-            this.showMascotMessage("休憩中...", 3000);
             this.startBtn.innerHTML = `
                 <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path></svg>
                 Start Training
@@ -342,6 +317,11 @@ class App {
         const jp = this.inputJp.value.trim();
         const en = this.inputEn.value.trim();
         if (jp && en) {
+            // Remove the empty placeholder if it's the only item
+            if (this.questions.length === 1 && this.questions[0].jp === "データがありません") {
+                this.questions = [];
+            }
+            // Add new question
             this.questions.push({ jp, en });
             this.saveQuestions();
             this.updateProgress();
@@ -350,7 +330,110 @@ class App {
             this.inputJp.value = '';
             this.inputEn.value = '';
 
-            this.showMascotMessage("問題を追加したよ！<br>えらい！", 3000);
+            // Re-render immediately if starting from empty to clear the UI
+            if (!this.isPlaying) {
+                this.renderQuestion(false);
+            }
+        }
+    }
+
+    renderModes() {
+        this.modeSelector.innerHTML = '';
+
+        // Render base modes
+        this.baseModes.forEach(mode => {
+            const btn = document.createElement('button');
+            btn.className = `mode-btn ${this.currentMode === mode ? 'active' : ''}`;
+            btn.dataset.mode = mode;
+            btn.textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+            btn.onclick = (e) => this.handleModeChange(mode);
+            this.modeSelector.appendChild(btn);
+        });
+
+        // Render custom modes
+        this.customModes.forEach(mode => {
+            const wrapper = document.createElement('div');
+            wrapper.style.display = 'flex';
+            wrapper.style.alignItems = 'center';
+            wrapper.className = `mode-btn ${this.currentMode === mode ? 'active' : ''}`;
+
+            const btn = document.createElement('span');
+            btn.style.cursor = 'pointer';
+            btn.textContent = mode;
+            btn.onclick = () => this.handleModeChange(mode);
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'mode-delete';
+            delBtn.innerHTML = '&times;';
+            delBtn.title = 'モードを削除';
+            delBtn.onclick = (e) => {
+                e.stopPropagation();
+                this.deleteMode(mode);
+            };
+
+            wrapper.appendChild(btn);
+            wrapper.appendChild(delBtn);
+            this.modeSelector.appendChild(wrapper);
+        });
+
+        // Render Add Mode (+)
+        const addBtn = document.createElement('button');
+        addBtn.className = 'mode-btn mode-btn-add';
+        addBtn.title = '新しいモードを追加';
+        addBtn.textContent = '+';
+        addBtn.onclick = () => this.promptNewMode();
+        this.modeSelector.appendChild(addBtn);
+    }
+
+    handleModeChange(modeName) {
+        if (this.isPlaying) this.togglePlay();
+
+        this.currentMode = modeName;
+        this.renderModes(); // Update active class
+        this.loadQuestions();
+        this.updateProgress();
+        this.renderQuestion(false);
+        this.renderList();
+    }
+
+    promptNewMode() {
+        const name = prompt("新しいモードの名前を入力してください（例: Travel, TOEIC）:");
+        if (!name) return;
+
+        const cleanName = name.trim();
+        if (cleanName === "" || this.baseModes.includes(cleanName.toLowerCase()) || this.customModes.includes(cleanName)) {
+            alert("無効な名前、または既に存在する名前です。");
+            return;
+        }
+
+        // Add format and save
+        this.customModes.push(cleanName);
+        localStorage.setItem('flash_custom_modes', JSON.stringify(this.customModes));
+
+        // Initialize an empty array for this new mode
+        localStorage.setItem(`flashQuestions_${cleanName}`, JSON.stringify([]));
+
+        // Switch to the new mode
+        this.handleModeChange(cleanName);
+    }
+
+    deleteMode(modeName) {
+        if (!confirm(`本当にモード「${modeName}」とその中のすべての問題を削除しますか？`)) {
+            return;
+        }
+
+        // Remove from array and save
+        this.customModes = this.customModes.filter(m => m !== modeName);
+        localStorage.setItem('flash_custom_modes', JSON.stringify(this.customModes));
+
+        // Clean up data
+        localStorage.removeItem(`flashQuestions_${modeName}`);
+
+        // If the deleted mode was active, switch to easy
+        if (this.currentMode === modeName) {
+            this.handleModeChange('easy');
+        } else {
+            this.renderModes();
         }
     }
 
