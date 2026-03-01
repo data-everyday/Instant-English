@@ -1,6 +1,6 @@
 class App {
     constructor() {
-        this.currentMode = 'easy'; // Default mode
+        this.currentMode = 'Best 125 Verbs'; // Default mode
         this.baseQuestions = { ...questionsByMode };
         this.currentIndex = 0;
         this.isPlaying = false;
@@ -27,7 +27,7 @@ class App {
         this.inputEn = document.getElementById('input-en');
 
         // Mode Setup
-        this.baseModes = ['easy', 'normal', 'hard'];
+        this.baseModes = ['Best 125 Verbs', 'easy', 'normal', 'hard'];
         this.customModes = JSON.parse(localStorage.getItem('flash_custom_modes')) || [];
         this.modeSelector = document.getElementById('mode-selector');
 
